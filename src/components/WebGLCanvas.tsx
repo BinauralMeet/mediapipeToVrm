@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createVrmAvatar, VRMAvatar, applyMPLandmarkToVrm } from '../utils/vrm';
 import { AllLandmarks } from '../utils/vrmIK';
 
@@ -18,6 +19,7 @@ const WebGLCanvas = forwardRef<WebGLCanvasRef, WebGLCanvasProps>(({ width, heigh
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
+  const controlsRef = useRef<OrbitControls | null>(null);
   const vrmAvatarRef = useRef<VRMAvatar | null>(null);
   const [isModelLoaded, setIsModelLoaded] = useState(false);
 
@@ -47,6 +49,12 @@ const WebGLCanvas = forwardRef<WebGLCanvasRef, WebGLCanvasProps>(({ width, heigh
         const distance = size.y * 1.5;
         cameraRef.current.position.set(0, center.y, distance);
         cameraRef.current.lookAt(center);
+        
+        // コントロールのターゲットを更新
+        if (controlsRef.current) {
+          controlsRef.current.target.copy(center);
+          controlsRef.current.update();
+        }
       }
     };
     
@@ -66,6 +74,9 @@ const WebGLCanvas = forwardRef<WebGLCanvasRef, WebGLCanvasProps>(({ width, heigh
     const animate = () => {
       requestAnimationFrame(animate);
       vrmAvatarRef.current?.vrm.update(0.016);
+      if (controlsRef.current) {
+        controlsRef.current.update();
+      }
       rendererRef.current?.render(sceneRef.current!, cameraRef.current!);
     };
     
@@ -92,7 +103,11 @@ const WebGLCanvas = forwardRef<WebGLCanvasRef, WebGLCanvasProps>(({ width, heigh
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 20);
     cameraRef.current = camera;
     
-    const renderer = new THREE.WebGLRenderer({ canvas: canvasRef.current, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ 
+      canvas: canvasRef.current, 
+      alpha: true,
+      antialias: true 
+    });
     rendererRef.current = renderer;
     renderer.setSize(width, height);
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -118,9 +133,47 @@ const WebGLCanvas = forwardRef<WebGLCanvasRef, WebGLCanvasProps>(({ width, heigh
         const distance = size.y * 1.5;
         camera.position.set(0, center.y, distance);
         camera.lookAt(center);
-        
+
+        // OrbitControlsの設定
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = false;
+        controls.minDistance = 1;
+        controls.maxDistance = 10;
+        controls.maxPolarAngle = Math.PI / 2;
+        controls.target.copy(center);
+        controls.update();
+        controlsRef.current = controls;
+
+        // イベントリスナーの設定
+        const handlePointerDown = (event: PointerEvent) => {
+          event.preventDefault();
+        };
+        const handlePointerMove = (event: PointerEvent) => {
+          event.preventDefault();
+        };
+        const handlePointerUp = (event: PointerEvent) => {
+          event.preventDefault();
+        };
+        const handleWheel = (event: WheelEvent) => {
+          event.preventDefault();
+        };
+
+        canvasRef.current?.addEventListener('pointerdown', handlePointerDown);
+        canvasRef.current?.addEventListener('pointermove', handlePointerMove);
+        canvasRef.current?.addEventListener('pointerup', handlePointerUp);
+        canvasRef.current?.addEventListener('wheel', handleWheel);
+
         // モデルが読み込まれたことを示す
         setIsModelLoaded(true);
+
+        return () => {
+          canvasRef.current?.removeEventListener('pointerdown', handlePointerDown);
+          canvasRef.current?.removeEventListener('pointermove', handlePointerMove);
+          canvasRef.current?.removeEventListener('pointerup', handlePointerUp);
+          canvasRef.current?.removeEventListener('wheel', handleWheel);
+        };
       })
       .catch((error) => console.error(error));
 
@@ -129,11 +182,28 @@ const WebGLCanvas = forwardRef<WebGLCanvasRef, WebGLCanvasProps>(({ width, heigh
       if (vrmAvatarRef.current) {
         vrmAvatarRef.current.dispo?.();
       }
+      if (controlsRef.current) {
+        controlsRef.current.dispose();
+      }
       renderer.dispose();
     };
   }, []);
 
-  return <canvas ref={canvasRef} />;
+  return (
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+      <canvas 
+        ref={canvasRef} 
+        style={{ 
+          width: '100%', 
+          height: '100%', 
+          touchAction: 'none',
+          position: 'absolute',
+          top: 0,
+          left: 0
+        }} 
+      />
+    </div>
+  );
 });
 
 export default WebGLCanvas; 

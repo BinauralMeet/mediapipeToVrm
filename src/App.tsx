@@ -101,12 +101,7 @@ function App() {
         </Button>
       </div>
       <div style={{ width: '66.67%', height: '100%', position: 'relative' }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
-          <WebGLCanvas ref={webGLCanvasRef} width={800} height={600} landmarks={landmarks} />
-        </div>
-        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
-          <Canvas2D width={800} height={600} />
-        </div>
+        <WebGLCanvas ref={webGLCanvasRef} width={800} height={600} landmarks={landmarks} />
       </div>
     </div>
   )
