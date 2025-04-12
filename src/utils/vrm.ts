@@ -113,3 +113,5 @@ export function applyMPLandmarkToVrm(avatar:VRMAvatar, landmarks: AllLandmarks|u
     }
   }
 }
+
+export { setRestingPoseToVrm }

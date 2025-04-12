@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createVrmAvatar, VRMAvatar, applyMPLandmarkToVrm } from '../utils/vrm';
-import { AllLandmarks } from '../utils/vrmIK';
+import { AllLandmarks, setRestingPoseToVrm } from '../utils/vrmIK';
+import { runMeidaPipe } from '../utils/mediapipeCamera';
 
 interface WebGLCanvasProps {
   width: number;
@@ -37,25 +38,7 @@ const WebGLCanvas = forwardRef<WebGLCanvasRef, WebGLCanvasProps>(({ width, heigh
       
       // カメラのアスペクト比を更新
       cameraRef.current.aspect = width / height;
-      cameraRef.current.updateProjectionMatrix();
-      
-      // VRMモデルが読み込まれている場合は、カメラ位置を再調整
-      if (vrmAvatarRef.current && sceneRef.current) {
-        const box = new THREE.Box3().setFromObject(vrmAvatarRef.current.vrm.scene);
-        const size = box.getSize(new THREE.Vector3());
-        const center = box.getCenter(new THREE.Vector3());
-        
-        // モデルの高さに基づいてカメラ位置を設定
-        const distance = size.y * 1.5;
-        cameraRef.current.position.set(0, center.y, distance);
-        cameraRef.current.lookAt(center);
-        
-        // コントロールのターゲットを更新
-        if (controlsRef.current) {
-          controlsRef.current.target.copy(center);
-          controlsRef.current.update();
-        }
-      }
+      cameraRef.current.updateProjectionMatrix();      
     };
     
     // 初期設定とリサイズイベントの登録
@@ -73,6 +56,9 @@ const WebGLCanvas = forwardRef<WebGLCanvasRef, WebGLCanvasProps>(({ width, heigh
     
     const animate = () => {
       requestAnimationFrame(animate);
+      if (!runMeidaPipe && vrmAvatarRef.current) {
+        setRestingPoseToVrm(vrmAvatarRef.current.vrm)
+      }
       vrmAvatarRef.current?.vrm.update(0.016);
       if (controlsRef.current) {
         controlsRef.current.update();
@@ -131,7 +117,7 @@ const WebGLCanvas = forwardRef<WebGLCanvasRef, WebGLCanvasProps>(({ width, heigh
         
         // モデルの高さに基づいてカメラ位置を設定
         const distance = size.y * 1.5;
-        camera.position.set(0, center.y, distance);
+        camera.position.set(0, center.y, -distance);
         camera.lookAt(center);
 
         // OrbitControlsの設定
@@ -145,38 +131,9 @@ const WebGLCanvas = forwardRef<WebGLCanvasRef, WebGLCanvasProps>(({ width, heigh
         controls.target.copy(center);
         controls.update();
         controlsRef.current = controls;
-
-        // イベントリスナーの設定
-        const handlePointerDown = (event: PointerEvent) => {
-          event.preventDefault();
-        };
-        const handlePointerMove = (event: PointerEvent) => {
-          event.preventDefault();
-        };
-        const handlePointerUp = (event: PointerEvent) => {
-          event.preventDefault();
-        };
-        const handleWheel = (event: WheelEvent) => {
-          event.preventDefault();
-        };
-
-        canvasRef.current?.addEventListener('pointerdown', handlePointerDown);
-        canvasRef.current?.addEventListener('pointermove', handlePointerMove);
-        canvasRef.current?.addEventListener('pointerup', handlePointerUp);
-        canvasRef.current?.addEventListener('wheel', handleWheel);
-
-        // モデルが読み込まれたことを示す
         setIsModelLoaded(true);
-
-        return () => {
-          canvasRef.current?.removeEventListener('pointerdown', handlePointerDown);
-          canvasRef.current?.removeEventListener('pointermove', handlePointerMove);
-          canvasRef.current?.removeEventListener('pointerup', handlePointerUp);
-          canvasRef.current?.removeEventListener('wheel', handleWheel);
-        };
       })
       .catch((error) => console.error(error));
-
     // クリーンアップ
     return () => {
       if (vrmAvatarRef.current) {

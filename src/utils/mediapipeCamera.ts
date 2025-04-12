@@ -33,7 +33,7 @@ faceMesh.setOptions({
 
 //  camera device selection
 let videoEl: HTMLVideoElement|undefined
-let runMeidaPipe = false
+export let runMeidaPipe = false
 export function stopMpTrack(){
   if (videoEl){
     videoEl.srcObject = null
