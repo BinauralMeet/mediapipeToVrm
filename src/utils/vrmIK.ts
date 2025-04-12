@@ -191,6 +191,11 @@ export function createStrcture3DEx(vrm: VRM): FikStructure3DEx{
   structure.vrmHandToHandLength = lengthSumForVrm(handToHandPosList)
   structure.scale = 1
 
+  // 初期化が必要なプロパティを追加
+  structure.mrHeadInv = new THREE.Matrix4()
+  structure.m4wHipsInv = new THREE.Matrix4()
+  structure.hHeadTohLm = new THREE.Vector3()
+
   return structure
 }
 

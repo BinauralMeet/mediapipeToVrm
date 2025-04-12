@@ -1,12 +1,22 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, forwardRef, useImperativeHandle } from 'react';
 
 interface Canvas2DProps {
   width?: number;
   height?: number;
 }
 
-const Canvas2D: React.FC<Canvas2DProps> = ({ width = 400, height = 300 }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+export interface Canvas2DRef {
+  getContext: () => CanvasRenderingContext2D | null;
+}
+
+const Canvas2D = forwardRef<Canvas2DRef, Canvas2DProps>(({ width = 400, height = 300 }, ref) => {
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    getContext: () => {
+      return canvasRef.current?.getContext('2d', { alpha: true }) || null;
+    }
+  }));
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -27,6 +37,8 @@ const Canvas2D: React.FC<Canvas2DProps> = ({ width = 400, height = 300 }) => {
       style={{ border: 'none' }}
     />
   );
-};
+});
+
+Canvas2D.displayName = 'Canvas2D';
 
 export default Canvas2D; 

@@ -10,9 +10,20 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mediapipe/drawing_utils": "^0.3.1675466124",
     "@mediapipe/face_mesh": "^0.4.1633559619",
     "@mediapipe/holistic": "^0.5.1675471629",
-    "@pixiv/three-vrm": "^3.3.6",
+    "@mui/icons-material": "^7.0.2",
+    "@mui/material": "^7.0.2",
+    "@pixiv/three-vrm": "3.3.6",
+    "@pixiv/three-vrm-core": "3.3.6",
+    "@pixiv/three-vrm-materials-mtoon": "3.3.6",
+    "@pixiv/three-vrm-node-constraint": "3.3.6",
+    "@pixiv/three-vrm-springbone": "3.3.6",
+    "fullik": "https://github.com/lo-th/fullik.git",
+    "kalidokit": "https://github.com/BinauralMeet/kalidokit.git",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "three": "^0.175.0"

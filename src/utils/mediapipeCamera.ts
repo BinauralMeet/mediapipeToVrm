@@ -5,10 +5,12 @@ import {AllLandmarks} from './vrmIK'
 // config.js
 declare const config:any                  //  from ../../config.js included from index.html
 
-function onLandmarkUpdate(lms:AllLandmarks){
-  
+// グローバルなonLandmarkUpdate関数を宣言
+declare global {
+  interface Window {
+    onLandmarkUpdate?: (lms: AllLandmarks) => void;
+  }
 }
-
 
 let holistic = new Holistic({locateFile: (file) => {
   return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`;
@@ -43,7 +45,7 @@ export function stopMpTrack(){
 export function startMpTrack(faceOnly: boolean, did?:string) {
   stopMpTrack()
   const promise = new Promise<void>((resolutionFunc, rejectionFunc) => {
-    const rtcVideo = {...config.rtc.videoConstraints.video,
+    const rtcVideo = {
       width:{
         ideal:320,
       },
@@ -69,7 +71,7 @@ export function startMpTrack(faceOnly: boolean, did?:string) {
           const lms:AllLandmarks = {
             faceLm: results.multiFaceLandmarks[0]
           }
-          onLandmarkUpdate(lms)
+          window.onLandmarkUpdate?.(lms)
         })
       }else{
         holistic.onResults(results => {
@@ -82,7 +84,7 @@ export function startMpTrack(faceOnly: boolean, did?:string) {
             rightHandLm: results.rightHandLandmarks,
             image: results.image
           }
-          onLandmarkUpdate(lms)
+          window.onLandmarkUpdate?.(lms)
         })
       }
       function timer(detector:Holistic | FaceMesh){

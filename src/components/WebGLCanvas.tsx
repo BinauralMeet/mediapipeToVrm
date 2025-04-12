@@ -1,20 +1,29 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import * as THREE from 'three';
-import { GLTFLoader, GLTF } from 'three/addons/loaders/GLTFLoader.js';
-import { VRMLoaderPlugin, VRM } from '@pixiv/three-vrm';
+import { createVrmAvatar, VRMAvatar, applyMPLandmarkToVrm } from '../utils/vrm';
+import { AllLandmarks } from '../utils/vrmIK';
 
 interface WebGLCanvasProps {
   width: number;
   height: number;
+  landmarks?: AllLandmarks;
 }
 
-const WebGLCanvas: React.FC<WebGLCanvasProps> = ({ width, height }) => {
+export interface WebGLCanvasRef {
+  getVrmAvatar: () => VRMAvatar | null;
+}
+
+const WebGLCanvas = forwardRef<WebGLCanvasRef, WebGLCanvasProps>(({ width, height, landmarks }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
-  const vrmRef = useRef<VRM | null>(null);
+  const vrmAvatarRef = useRef<VRMAvatar | null>(null);
   const [isModelLoaded, setIsModelLoaded] = useState(false);
+
+  useImperativeHandle(ref, () => ({
+    getVrmAvatar: () => vrmAvatarRef.current,
+  }));
 
   // キャンバスサイズの変更を監視
   useEffect(() => {
@@ -29,8 +38,8 @@ const WebGLCanvas: React.FC<WebGLCanvasProps> = ({ width, height }) => {
       cameraRef.current.updateProjectionMatrix();
       
       // VRMモデルが読み込まれている場合は、カメラ位置を再調整
-      if (vrmRef.current && sceneRef.current) {
-        const box = new THREE.Box3().setFromObject(vrmRef.current.scene);
+      if (vrmAvatarRef.current && sceneRef.current) {
+        const box = new THREE.Box3().setFromObject(vrmAvatarRef.current.vrm.scene);
         const size = box.getSize(new THREE.Vector3());
         const center = box.getCenter(new THREE.Vector3());
         
@@ -52,11 +61,11 @@ const WebGLCanvas: React.FC<WebGLCanvasProps> = ({ width, height }) => {
 
   // アニメーションループを別のuseEffectで管理
   useEffect(() => {
-    if (!rendererRef.current || !cameraRef.current || !sceneRef.current || !vrmRef.current || !isModelLoaded) return;
+    if (!rendererRef.current || !cameraRef.current || !sceneRef.current || !vrmAvatarRef.current || !isModelLoaded) return;
     
     const animate = () => {
       requestAnimationFrame(animate);
-      vrmRef.current?.update(0.016);
+      vrmAvatarRef.current?.vrm.update(0.016);
       rendererRef.current?.render(sceneRef.current!, cameraRef.current!);
     };
     
@@ -66,6 +75,12 @@ const WebGLCanvas: React.FC<WebGLCanvasProps> = ({ width, height }) => {
       // アニメーションのクリーンアップ
     };
   }, [isModelLoaded]);
+
+  // ランドマークの更新を監視
+  useEffect(() => {
+    if (!vrmAvatarRef.current || !landmarks) return;
+    applyMPLandmarkToVrm(vrmAvatarRef.current, landmarks);
+  }, [landmarks]);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -88,22 +103,14 @@ const WebGLCanvas: React.FC<WebGLCanvasProps> = ({ width, height }) => {
     scene.add(light);
     scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
-    // VRMローダーの設定
-    const loader = new GLTFLoader();
-    loader.register((parser: any) => {
-      return new VRMLoaderPlugin(parser);
-    });
-
     // VRMモデルの読み込み
-    loader.load(
-      'https://binaural.me/public_packages/uploader/vrm/avatar/AvatarSample_E2.vrm',
-      (gltf: GLTF) => {
-        const vrm = gltf.userData.vrm as VRM;
-        vrmRef.current = vrm;
-        scene.add(vrm.scene);
+    createVrmAvatar('https://binaural.me/public_packages/uploader/vrm/avatar/AvatarSample_E2.vrm')
+      .then((avatar) => {
+        vrmAvatarRef.current = avatar;
+        scene.add(avatar.vrm.scene);
 
         // モデルのサイズに基づいてカメラ位置を調整
-        const box = new THREE.Box3().setFromObject(vrm.scene);
+        const box = new THREE.Box3().setFromObject(avatar.vrm.scene);
         const size = box.getSize(new THREE.Vector3());
         const center = box.getCenter(new THREE.Vector3());
         
@@ -114,20 +121,19 @@ const WebGLCanvas: React.FC<WebGLCanvasProps> = ({ width, height }) => {
         
         // モデルが読み込まれたことを示す
         setIsModelLoaded(true);
-      },
-      (progress: { loaded: number; total: number }) => {
-        console.log('Loading model...', 100.0 * (progress.loaded / progress.total), '%');
-      },
-      (error: unknown) => console.error(error)
-    );
+      })
+      .catch((error) => console.error(error));
 
     // クリーンアップ
     return () => {
+      if (vrmAvatarRef.current) {
+        vrmAvatarRef.current.dispo?.();
+      }
       renderer.dispose();
     };
   }, []);
 
   return <canvas ref={canvasRef} />;
-};
+});
 
 export default WebGLCanvas; 
